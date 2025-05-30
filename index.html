@@ -18,7 +18,7 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      object-fit: cover;
+      object-fit: contain;
       background: black;
     }
 
@@ -42,68 +42,42 @@
       cursor: pointer;
     }
 
-    .loading {
+    .loading-screen {
       position: fixed;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
       background: black;
-      z-index: 1000;
+      color: white;
+      font-size: 24px;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: white;
-      font-size: 24px;
-      font-family: sans-serif;
-    }
-
-    .hidden {
-      display: none;
+      z-index: 1000;
     }
   </style>
 </head>
 <body>
 
-  <div class="loading" id="loading">Loading...</div>
+  <div class="loading-screen" id="loading">Loading...</div>
   <img src="https://upload.wikimedia.org/wikipedia/commons/3/3e/Disney%2B_logo.svg" class="logo" alt="Logo">
-  <video id="livePlayer" autoplay muted playsinline></video>
-  <video id="tempVideo" class="hidden" preload="metadata"></video>
-
-  <div class="click-overlay" onclick="initAudio()" id="clickOverlay"></div>
+  <video id="livePlayer" autoplay playsinline muted></video>
+  <div class="click-overlay" onclick="initAudio()"></div>
 
   <script>
     const videoList = [
-      { src: "https://dl.dropboxusercontent.com/scl/fi/85g1ethsruqn72we09zlq/A-Call-From-the-Teacher-3979351.mkv?rlkey=ecv40s2i7z3alb887lsqq9l31&st=3m7tm78c&raw=1" },
-      { src: "https://dl.dropboxusercontent.com/scl/fi/7inl2vx6chug056hjzsao/A-Cloud-Ride-3979294.mkv?rlkey=jz5ekz7jpv47aksivcxh06sd4&st=ah2a9cxx&raw=1" },
-      { src: "https://dl.dropboxusercontent.com/scl/fi/jyj2grjbkx89la2p8skca/A-Courageous-Proposal-3979196.mkv?rlkey=x0en0ktlq5ea42yi0uubaoy79&st=zqlhqkkg&raw=1" }
+      { src: "https://dl.dropboxusercontent.com/scl/fi/85g1ethsruqn72we09zlq/A-Call-From-the-Teacher-3979351.mkv?rlkey=ecv40s2i7z3alb887lsqq9l31&st=3m7tm78c&raw=1", estimated: 1800 },
+      { src: "https://dl.dropboxusercontent.com/scl/fi/7inl2vx6chug056hjzsao/A-Cloud-Ride-3979294.mkv?rlkey=jz5ekz7jpv47aksivcxh06sd4&st=ah2a9cxx&raw=1", estimated: 1500 },
+      { src: "https://dl.dropboxusercontent.com/scl/fi/jyj2grjbkx89la2p8skca/A-Courageous-Proposal-3979196.mkv?rlkey=x0en0ktlq5ea42yi0uubaoy79&st=zqlhqkkg&raw=1", estimated: 2000 }
     ];
 
     const player = document.getElementById("livePlayer");
-    const tempVideo = document.getElementById("tempVideo");
-    const overlay = document.getElementById("clickOverlay");
-    const loadingScreen = document.getElementById("loading");
+    const overlay = document.querySelector(".click-overlay");
+    const loading = document.getElementById("loading");
     const gapDuration = 1;
-    let totalCycle = 0;
 
-    async function fetchDurations() {
-      for (let i = 0; i < videoList.length; i++) {
-        await new Promise((resolve) => {
-          tempVideo.src = videoList[i].src;
-          tempVideo.onloadedmetadata = () => {
-            videoList[i].duration = tempVideo.duration;
-            totalCycle += tempVideo.duration + gapDuration;
-            resolve();
-          };
-          tempVideo.onerror = () => {
-            videoList[i].duration = 300;
-            totalCycle += 300 + gapDuration;
-            resolve();
-          };
-        });
-      }
-      startLiveTV();
-    }
+    let totalCycle = videoList.reduce((sum, v) => sum + v.estimated + gapDuration, 0);
 
     function getLivePosition() {
       const now = new Date();
@@ -115,27 +89,22 @@
       let current = 0;
 
       for (let i = 0; i < videoList.length; i++) {
-        const segDur = videoList[i].duration + gapDuration;
+        const segDur = videoList[i].estimated + gapDuration;
         if (livePos < current + segDur) {
-          if (livePos - current >= videoList[i].duration) {
+          if (livePos - current >= videoList[i].estimated) {
             player.pause();
             player.removeAttribute("src");
             player.load();
             setTimeout(startLiveTV, 1000);
           } else {
             player.src = videoList[i].src;
-
-            player.onloadedmetadata = () => {
-              player.currentTime = livePos - current;
-            };
-
-            showLoading();
-
+            player.currentTime = livePos - current;
+            showLoading(); // Show loading
             player.oncanplay = () => {
               hideLoading();
               player.play().catch(console.error);
-              setupEndHandler(i);
             };
+            setupEndHandler(i);
           }
           break;
         }
@@ -151,18 +120,13 @@
         setTimeout(() => {
           const nextIndex = (index + 1) % videoList.length;
           player.src = videoList[nextIndex].src;
-
-          player.onloadedmetadata = () => {
-            player.currentTime = 0;
-          };
-
+          player.currentTime = 0;
           showLoading();
-
           player.oncanplay = () => {
             hideLoading();
             player.play().catch(console.error);
-            setupEndHandler(nextIndex);
           };
+          setupEndHandler(nextIndex);
         }, gapDuration * 1000);
       };
     }
@@ -174,20 +138,14 @@
     }
 
     function showLoading() {
-      loadingScreen.style.display = 'flex';
-      overlay.style.display = 'block';
+      loading.style.display = 'flex';
     }
 
     function hideLoading() {
-      loadingScreen.style.display = 'none';
-      setTimeout(() => {
-        overlay.style.display = 'none';
-        player.muted = false;
-        player.play().catch(console.error);
-      }, 2000);
+      loading.style.display = 'none';
     }
 
-    fetchDurations();
+    startLiveTV();
   </script>
 </body>
 </html>
