@@ -79,14 +79,10 @@
 
     const totalCycle = videoList.reduce((sum, v) => sum + v.estimated + gapDuration, 0);
 
-    // Fixed start date: May 30, 2025 at 3:00 PM
-    const fixedStart = new Date("2025-05-30T15:00:00Z"); // UTC time
-    const localOffset = new Date().getTimezoneOffset() * 60000;
-    const fixedStartLocal = new Date(fixedStart.getTime() - localOffset);
-
     function getLivePosition() {
       const now = new Date();
-      const elapsedSeconds = Math.floor((now - fixedStartLocal) / 1000);
+      const fixedStart = new Date("2025-05-30T09:30:00Z"); // 3:00 PM IST = 09:30 UTC
+      const elapsedSeconds = Math.floor((now - fixedStart) / 1000);
       return elapsedSeconds >= 0 ? elapsedSeconds % totalCycle : 0;
     }
 
