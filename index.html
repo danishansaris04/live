@@ -18,7 +18,7 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      object-fit: cover; /* FIX: Proper fill */
+      object-fit: cover;
       background: black;
     }
 
@@ -171,8 +171,10 @@
     function hideLoading() {
       loadingScreen.style.display = 'none';
       setTimeout(() => {
-        overlay.click();
-      }, 2000); // Simulate click
+        overlay.style.display = 'none';
+        player.muted = false;
+        player.play().catch(console.error);
+      }, 2000);
     }
 
     fetchDurations();
