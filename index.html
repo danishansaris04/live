@@ -76,12 +76,28 @@
     const overlay = document.querySelector(".click-overlay");
     const loading = document.getElementById("loading");
     const gapDuration = 1;
+    const totalCycle = videoList.reduce((sum, v) => sum + v.estimated + gapDuration, 0);
 
-    let totalCycle = videoList.reduce((sum, v) => sum + v.estimated + gapDuration, 0);
+    let serverTimeOffset = 0;
+
+    async function syncServerTime() {
+      showLoading();
+      try {
+        const res = await fetch("https://worldtimeapi.org/api/timezone/Etc/UTC");
+        const data = await res.json();
+        const serverTime = new Date(data.utc_datetime).getTime();
+        const localTime = Date.now();
+        serverTimeOffset = serverTime - localTime;
+        startLiveTV();
+      } catch (e) {
+        alert("Time sync failed. Check your internet.");
+      }
+    }
 
     function getLivePosition() {
-      const now = new Date();
-      return (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()) % totalCycle;
+      const now = Date.now() + serverTimeOffset;
+      const secondsToday = (now / 1000) % 86400;
+      return secondsToday % totalCycle;
     }
 
     function startLiveTV() {
@@ -99,7 +115,7 @@
           } else {
             player.src = videoList[i].src;
             player.currentTime = livePos - current;
-            showLoading(); // Show loading
+            showLoading();
             player.oncanplay = () => {
               hideLoading();
               player.play().catch(console.error);
@@ -145,7 +161,7 @@
       loading.style.display = 'none';
     }
 
-    startLiveTV();
+    syncServerTime();
   </script>
 </body>
 </html>
