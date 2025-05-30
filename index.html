@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Live TV Player</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: black;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    video {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover; /* FIX: Proper fill */
+      background: black;
+    }
+
+    .logo {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 80px;
+      opacity: 0.85;
+      z-index: 10;
+    }
+
+    .click-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 999;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: black;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 24px;
+      font-family: sans-serif;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="loading" id="loading">Loading...</div>
+  <img src="https://upload.wikimedia.org/wikipedia/commons/3/3e/Disney%2B_logo.svg" class="logo" alt="Logo">
+  <video id="livePlayer" autoplay muted playsinline></video>
+  <video id="tempVideo" class="hidden" preload="metadata"></video>
+
+  <div class="click-overlay" onclick="initAudio()" id="clickOverlay"></div>
+<script src="danish.js"></script>
+  <script>
+    
+
+    const player = document.getElementById("livePlayer");
+    const tempVideo = document.getElementById("tempVideo");
+    const overlay = document.getElementById("clickOverlay");
+    const loadingScreen = document.getElementById("loading");
+    const gapDuration = 1;
+    let totalCycle = 0;
+
+    async function fetchDurations() {
+      for (let i = 0; i < videoList.length; i++) {
+        await new Promise((resolve) => {
+          tempVideo.src = videoList[i].src;
+          tempVideo.onloadedmetadata = () => {
+            videoList[i].duration = tempVideo.duration;
+            totalCycle += tempVideo.duration + gapDuration;
+            resolve();
+          };
+          tempVideo.onerror = () => {
+            videoList[i].duration = 300;
+            totalCycle += 300 + gapDuration;
+            resolve();
+          };
+        });
+      }
+      startLiveTV();
+    }
+
+    function getLivePosition() {
+      const now = new Date();
+      return (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()) % totalCycle;
+    }
+
+    function startLiveTV() {
+      let livePos = getLivePosition();
+      let current = 0;
+
+      for (let i = 0; i < videoList.length; i++) {
+        const segDur = videoList[i].duration + gapDuration;
+        if (livePos < current + segDur) {
+          if (livePos - current >= videoList[i].duration) {
+            player.pause();
+            player.removeAttribute("src");
+            player.load();
+            setTimeout(startLiveTV, 1000);
+          } else {
+            player.src = videoList[i].src;
+            player.currentTime = livePos - current;
+            showLoading();
+            player.oncanplay = () => {
+              hideLoading();
+              player.play().catch(console.error);
+              setupEndHandler(i);
+            };
+          }
+          break;
+        }
+        current += segDur;
+      }
+    }
+
+    function setupEndHandler(index) {
+      player.onended = () => {
+        player.pause();
+        player.removeAttribute("src");
+        player.load();
+        setTimeout(() => {
+          const nextIndex = (index + 1) % videoList.length;
+          player.src = videoList[nextIndex].src;
+          player.currentTime = 0;
+          showLoading();
+          player.oncanplay = () => {
+            hideLoading();
+            player.play().catch(console.error);
+            setupEndHandler(nextIndex);
+          };
+        }, gapDuration * 1000);
+      };
+    }
+
+    function initAudio() {
+      overlay.style.display = 'none';
+      player.muted = false;
+      player.play().catch(console.error);
+    }
+
+    function showLoading() {
+      loadingScreen.style.display = 'flex';
+      overlay.style.display = 'block';
+    }
+
+    function hideLoading() {
+      loadingScreen.style.display = 'none';
+      setTimeout(() => {
+        overlay.click();
+      }, 2000); // Simulate click
+    }
+
+    fetchDurations();
+  </script>
+</body>
+</html>
