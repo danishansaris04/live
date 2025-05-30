@@ -85,26 +85,29 @@
     }
 
     function startLiveTV() {
-      let livePos = getLivePosition();
+      const livePos = getLivePosition();
       let current = 0;
 
       for (let i = 0; i < videoList.length; i++) {
         const segDur = videoList[i].estimated + gapDuration;
         if (livePos < current + segDur) {
-          if (livePos - current >= videoList[i].estimated) {
-            player.pause();
-            player.removeAttribute("src");
-            player.load();
+          const videoOffset = livePos - current;
+          if (videoOffset >= videoList[i].estimated) {
             setTimeout(startLiveTV, 1000);
           } else {
+            player.pause();
             player.src = videoList[i].src;
-            player.currentTime = livePos - current;
-            showLoading(); // Show loading
+            showLoading();
+
+            player.onloadedmetadata = () => {
+              player.currentTime = videoOffset;
+            };
+
             player.oncanplay = () => {
               hideLoading();
               player.play().catch(console.error);
+              setupEndHandler(i);
             };
-            setupEndHandler(i);
           }
           break;
         }
@@ -114,20 +117,21 @@
 
     function setupEndHandler(index) {
       player.onended = () => {
+        const nextIndex = (index + 1) % videoList.length;
         player.pause();
-        player.removeAttribute("src");
+        player.src = videoList[nextIndex].src;
         player.load();
-        setTimeout(() => {
-          const nextIndex = (index + 1) % videoList.length;
-          player.src = videoList[nextIndex].src;
+        showLoading();
+
+        player.onloadedmetadata = () => {
           player.currentTime = 0;
-          showLoading();
-          player.oncanplay = () => {
-            hideLoading();
-            player.play().catch(console.error);
-          };
+        };
+
+        player.oncanplay = () => {
+          hideLoading();
+          player.play().catch(console.error);
           setupEndHandler(nextIndex);
-        }, gapDuration * 1000);
+        };
       };
     }
 
