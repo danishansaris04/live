@@ -124,8 +124,13 @@
             setTimeout(startLiveTV, 1000);
           } else {
             player.src = videoList[i].src;
-            player.currentTime = livePos - current;
+
+            player.onloadedmetadata = () => {
+              player.currentTime = livePos - current;
+            };
+
             showLoading();
+
             player.oncanplay = () => {
               hideLoading();
               player.play().catch(console.error);
@@ -146,8 +151,13 @@
         setTimeout(() => {
           const nextIndex = (index + 1) % videoList.length;
           player.src = videoList[nextIndex].src;
-          player.currentTime = 0;
+
+          player.onloadedmetadata = () => {
+            player.currentTime = 0;
+          };
+
           showLoading();
+
           player.oncanplay = () => {
             hideLoading();
             player.play().catch(console.error);
