@@ -76,28 +76,18 @@
     const overlay = document.querySelector(".click-overlay");
     const loading = document.getElementById("loading");
     const gapDuration = 1;
+
     const totalCycle = videoList.reduce((sum, v) => sum + v.estimated + gapDuration, 0);
 
-    let serverTimeOffset = 0;
-
-    async function syncServerTime() {
-      showLoading();
-      try {
-        const res = await fetch("https://worldtimeapi.org/api/timezone/Etc/UTC");
-        const data = await res.json();
-        const serverTime = new Date(data.utc_datetime).getTime();
-        const localTime = Date.now();
-        serverTimeOffset = serverTime - localTime;
-        startLiveTV();
-      } catch (e) {
-        alert("Time sync failed. Check your internet.");
-      }
-    }
+    // Fixed start date: May 30, 2025 at 3:00 PM
+    const fixedStart = new Date("2025-05-30T15:00:00Z"); // UTC time
+    const localOffset = new Date().getTimezoneOffset() * 60000;
+    const fixedStartLocal = new Date(fixedStart.getTime() - localOffset);
 
     function getLivePosition() {
-      const now = Date.now() + serverTimeOffset;
-      const secondsToday = (now / 1000) % 86400;
-      return secondsToday % totalCycle;
+      const now = new Date();
+      const elapsedSeconds = Math.floor((now - fixedStartLocal) / 1000);
+      return elapsedSeconds >= 0 ? elapsedSeconds % totalCycle : 0;
     }
 
     function startLiveTV() {
@@ -161,7 +151,7 @@
       loading.style.display = 'none';
     }
 
-    syncServerTime();
+    startLiveTV();
   </script>
 </body>
 </html>
